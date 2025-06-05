@@ -1,0 +1,45 @@
+{
+    "version": 5,
+    "configurePresets": [
+        {
+            "name": "gcc_clang_common",
+            "hidden": true,
+            "environment": {
+                "LIB_COMPILE_OPTIONS": "-Wall;-Wextra;-Wpedantic;-Werror;-Wshadow;-Wpointer-arith;-Wstrict-prototypes;-Wmissing-prototypes;-Wno-missing-braces;-Wno-missing-field-initializers;-Wbad-function-cast;-Winline;-Wundef;-Wunreachable-code;-Wredundant-decls;-Wfloat-equal;-Wcast-align;-Wcast-qual;-Wdeclaration-after-statement;-Wmissing-include-dirs;-Wnested-externs;-Wsequence-point;-Wswitch;-Wunused-but-set-parameter;-Wwrite-strings;-Wunused-result;-pedantic-errors"
+            }
+        },
+        {
+            "name": "debug_ninja_clang",
+            "displayName": "Debug: Ninja Clang",
+            "generator": "Ninja",
+            "binaryDir": "build/debug",
+            "inherits": "gcc_clang_common",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "release_ninja_clang",
+            "displayName": "Release: Ninja Clang",
+            "generator": "Ninja",
+            "binaryDir": "build/release",
+            "inherits": "gcc_clang_common",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
+        {
+            "name": "debug_vs_17_2022",
+            "displayName": "Debug: Visual Studio 17 2022",
+            "generator": "Visual Studio 17 2022",
+            "environment": {
+                "LIB_COMPILE_OPTIONS": "/experimental:c11atomics"
+            },
+            "condition": {
+                "type": "equals",
+                "lhs":  "${hostSystemName}",
+                "rhs":  "Windows"
+            }
+        }
+    ]
+}
