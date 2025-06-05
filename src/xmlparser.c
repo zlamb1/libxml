@@ -38,9 +38,9 @@ InitXMLParser(XMLParserAttributes *attributes, XMLParser **out)
         }
     }
     parser = allocator.malloc(sizeof(XMLParserAllocator), allocator.ctx);
-    parser->allocator = allocator; 
     if ( parser == NULL )
         return XML_ERR_ALLOC;
+    parser->allocator = allocator; 
     *out = parser;
     return XML_SUCCESS;
 }
