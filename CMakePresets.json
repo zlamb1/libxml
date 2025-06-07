@@ -32,9 +32,6 @@
             "name": "debug_vs_17_2022",
             "displayName": "Debug: Visual Studio 17 2022",
             "generator": "Visual Studio 17 2022",
-            "environment": {
-                "LIB_COMPILE_OPTIONS": "/experimental:c11atomics"
-            },
             "condition": {
                 "type": "equals",
                 "lhs":  "${hostSystemName}",

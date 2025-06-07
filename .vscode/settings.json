@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "stdlib.h": "c",
+        "xmlparser.h": "c",
+        "xml_parser.h": "c",
+        "xml_unicode.h": "c",
+        "xml_parse.h": "c",
+        "stdio.h": "c"
+    }
+}
