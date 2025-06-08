@@ -21,11 +21,7 @@ XMLParserAttributes
     XMLAllocator *allocator;
 } XMLParserAttributes;
 
-typedef struct XMLParser
-{
-    XMLBoolean ignoreComments;
-    XMLAllocator *allocator;
-} XMLParser;
+typedef struct XMLParser XMLParser;
 
 typedef enum
 XMLNodeType
@@ -88,22 +84,25 @@ XMLDocument
     XMLAllocator *allocator;
 } XMLDocument;
 
-int 
+XMLResult 
 InitXMLParser(XMLParserAttributes *attributes, XMLParser **out);
 
-int 
+XMLResult 
 ParseXML(XMLParser *parser, const char *src, size_t len, XMLDocument *out); 
 
-int
+XMLResult
 XMLNodeAppendChild(XMLNode *parent, XMLNode child, XMLAllocator *allocator);
 
-int
+XMLResult
 XMLNodeAppendAttrib(XMLNode *node, XMLNodeAttribute attrib, XMLAllocator *allocator);
 
 const char *
 GetXMLParserError(XMLParser *parser);
 
-int 
+XMLResult 
 DestroyXMLParser(XMLParser *xmlParser);
+
+XMLResult
+DestroyXMLDocument(XMLDocument *document);
 
 #endif

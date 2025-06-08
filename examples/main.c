@@ -34,6 +34,13 @@ readfile(const char *name, size_t *sz)
     return NULL;
 }
 
+static void 
+printindent(size_t indent)
+{
+    for ( size_t i = 0; i < indent; i++ )
+        printf("  ");
+}
+
 static void
 printstring(XMLString *string)
 {
@@ -54,33 +61,42 @@ printattributes(XMLNode *node)
     }
 }
 
-static void printstarttag(XMLNode *node)
+static void 
+printstarttag(XMLNode *node)
 {
     printf("<%s", node->name.buf);
     if ( node->nattribs ) {
         printf(" ");
         printattributes(node);
         printf(" ");
-    }
+    } else if ( node->nodeType == XML_NODE_TYPE_EMPTY )
+        printf(" ");
     if ( node->nodeType == XML_NODE_TYPE_EMPTY )
         printf("/");
     printf(">\n");
 }
 
-static void printnode(XMLNode *node)
+static void 
+printnode(XMLNode *node, size_t indent)
 {
     switch ( node->nodeType ) {
         case XML_NODE_TYPE_EMPTY:
+            printindent(indent);
             printstarttag(node);
             break;
         case XML_NODE_TYPE_TEXT:
+            printindent(indent);
             printstring(&node->text);
             break;
         case XML_NODE_TYPE_MIXED:
+            printindent(indent);
             printstarttag(node);
             for ( size_t i = 0; i < node->children.nchildren; i++ )
-                printnode(node->children.nodes + i);
-            printf("</%s>", node->name.buf);
+                printnode(node->children.nodes + i, indent + 1);
+            printindent(indent);
+            printf("</%s>\n", node->name.buf);
+            break;
+        default:
             break;
     }
 }
@@ -89,12 +105,14 @@ static void
 printdocument(XMLDocument *document)
 {
     XMLNode *root = document->root;
-    printnode(root);
+    printnode(root, 0);
 }
 
 static const char *EXAMPLE_FILES[1] = {
     "./examples/example01.xml"
 };
+
+void _XMLPrintAllocTracking(void);
 
 int 
 main(void)
@@ -120,6 +138,7 @@ main(void)
         }
         if ( ( result = ParseXML(parser, buf, len, &document) ) == XML_SUCCESS ) {
             printdocument(&document);
+            DestroyXMLDocument(&document);
         } else {
             printf("failed to parse XMLDocument -> %i\n", result);
             printf("%s\n", GetXMLParserError(parser));
@@ -127,5 +146,6 @@ main(void)
         free(buf);
     }
     DestroyXMLParser(parser);
+    _XMLPrintAllocTracking();
     return 0;
 }

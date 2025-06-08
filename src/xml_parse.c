@@ -1,6 +1,5 @@
 #include <assert.h>
 
-#include "xml_parse.h"
 #include "xml_unicode.h"
 
 #include "_xml_parser.h"
@@ -47,7 +46,7 @@ XMLIsNameChar(unsigned cp) {
 }
 
 static int
-_XMLParseName(_XMLParser *parser, XMLString *string)
+XMLParseName(XMLParser *parser, XMLString *string)
 {
     int advance;
     XMLPeekCP(parser, parser->cp, advance);
@@ -60,26 +59,14 @@ _XMLParseName(_XMLParser *parser, XMLString *string)
             break;
         XMLPeekCP(parser, parser->cp, advance);
     }
-    (void) string;
     return XML_SUCCESS;
-    XMLAllocateFail:
-    return XML_ERR_ALLOC;
-    XMLPeekFail:
-    return advance;
 }
 
-#define XMLConsumeWhiteSpaceChecked(PARSER, RESULT) \
-    do { \
-        if ( ( (RESULT) = _XMLConsumeWhiteSpace(parser) ) < 0 ) \
-            return (RESULT); \
-    } while (0)
-
-static int 
-_XMLConsumeWhiteSpace(_XMLParser *parser)
+int 
+XMLConsumeWhiteSpace(XMLParser *parser)
 {
     int cnt = 0;
     unsigned advance;
-    assert(parser != NULL);
     if ( parser->bytes.atEnd )
         return XML_SUCCESS;
     while ( 1 ) {
@@ -96,16 +83,13 @@ _XMLConsumeWhiteSpace(_XMLParser *parser)
                 return cnt;
         }
     }
-    XMLPeekFail:
-    return advance;
 }
 
 static int
-_XMLParseEq(_XMLParser *parser)
+XMLParseEq(XMLParser *parser)
 {
     int result;
-    if ( ( result = _XMLConsumeWhiteSpace(parser) ) < 0 )
-        return result;
+    XMLConsumeWhiteSpaceChecked(parser, result);
     XMLExpectCP(parser, XML_UNICODE_EQUALS, result);
     if ( result == 0 ) {
         char msg[8];
@@ -113,36 +97,30 @@ _XMLParseEq(_XMLParser *parser)
         XMLAllocateErrorMessageChecked(parser, "expected '=' for attribute value: got %s\n", msg);
         return XML_ERR_PARSE;
     }
-    if ( ( result = _XMLConsumeWhiteSpace(parser) ) < 0 )
-        return result;
+    XMLConsumeWhiteSpaceChecked(parser, result); 
     return XML_SUCCESS;
-    XMLAllocateFail:
-    return XML_ERR_ALLOC;
-    XMLExpectFail:
-    return result;
 }
 
 static int
-_XMLParseAttribValue(_XMLParser *parser, XMLString *value)
+XMLParseAttribValue(XMLParser *parser, XMLString *value)
 {
     unsigned cp;
     int advance;
     XMLPeekCP(parser, parser->cp, advance);
     switch ( parser->cp ) {
         case XML_UNICODE_QUOTE:
-            // fallthrough
         case XML_UNICODE_APOSTROPHE:
             cp = parser->cp;
             break;
         default: {
             char msg[8]; 
             XMLCharToString(msg, parser->codec, parser->cp);
-            XMLAllocateErrorMessageChecked(parser, "expected quote '\"' for attribute value: got %s\n", msg);
+            XMLAllocateErrorMessageChecked(parser, "expected '\"' for attribute value: got %s\n", msg);
             return XML_ERR_PARSE;
         }
     }
     XMLAdvanceCP(parser, advance);
-    while ( 1 ) {
+    while (1) {
         XMLPeekCP(parser, parser->cp, advance);
         if ( parser->cp == cp ) {
             XMLAdvanceCP(parser, advance);
@@ -156,7 +134,7 @@ _XMLParseAttribValue(_XMLParser *parser, XMLString *value)
             case XML_UNICODE_LESS_THAN: {
                 char msg[8]; 
                 XMLCharToString(msg, parser->codec, parser->cp);
-                XMLAllocateErrorMessageChecked(parser, "invalid character %s within attribute value\n", msg);
+                XMLAllocateErrorMessageChecked(parser, "invalid character within attribute value: %s\n", msg);
                 return XML_ERR_PARSE;
             }
         }
@@ -164,31 +142,16 @@ _XMLParseAttribValue(_XMLParser *parser, XMLString *value)
         XMLAdvanceCP(parser, advance);
     }
     return XML_SUCCESS;
-    XMLAllocateFail:
-    return XML_ERR_ALLOC;
-    XMLPeekFail:
-    return advance;
-}
-
-static int
-_XMLParseCharacterData(_XMLParser *parser, XMLNode *parent)
-{
-    (void) parser;
-    (void) parent;
-    return 0;
 }
 
 int
-XMLParseStartTag(XMLParser *base)
+XMLParseStartTag(XMLParser *parser)
 {
-    _XMLParser *parser;
     XMLNode *node;
+    XMLResult result;
     char msg[8]; 
-    int result;
-    assert(base != NULL);
-    parser = (_XMLParser *) base;
     if ( parser->root == NULL ) {
-        XMLAllocateChecked(node, parser->base.allocator, sizeof(XMLNode));
+        XMLAllocateChecked(node, parser->allocator, sizeof(XMLNode));
         node->parent = NULL;
         parser->root = node;
     } else {
@@ -199,52 +162,60 @@ XMLParseStartTag(XMLParser *base)
         }
         tmp = (XMLNode) {0};
         assert(parser->node != NULL);
-        if ( XMLNodeAppendChild(parser->node, tmp, parser->base.allocator) != XML_SUCCESS )
-            goto XMLAllocateFail;
+        assert(parser->node->nodeType == XML_NODE_TYPE_EMPTY || parser->node->nodeType == XML_NODE_TYPE_MIXED);
+        if ( parser->node->nodeType != XML_NODE_TYPE_MIXED ) {
+            parser->node->nodeType = XML_NODE_TYPE_MIXED;
+            parser->node->children.cap = 0;
+            parser->node->children.nchildren = 0;
+            parser->node->children.nodes = NULL;
+        }
+        XMLCheckError(XMLNodeAppendChild(parser->node, tmp, parser->allocator));
         assert(parser->node->children.nchildren > 0);
         assert(parser->node->isClosed == XML_FALSE);
         node = parser->node->children.nodes + ( parser->node->children.nchildren - 1 );
         node->parent = parser->node;
-        parser->node->nodeType = XML_NODE_TYPE_MIXED;
     }
-    node->name = InitXMLString(parser->codec, parser->base.allocator); 
+    node->name = InitXMLString(parser->codec, parser->allocator); 
     node->isClosed = XML_FALSE;
     node->nattribs = 0;
     node->cattribs = 0;
     node->attribs = NULL;
     node->nodeType = XML_NODE_TYPE_EMPTY;
     parser->node = node;
-    result = _XMLParseName(parser, &node->name);
-    switch (result) {
+    result = XMLParseName(parser, &node->name);
+    switch ( result ) {
+        case XML_SUCCESS:
+            break;
         case XML_ERR_PARSE:
             XMLCharToString(msg, parser->codec, parser->cp);
             XMLAllocateErrorMessageChecked(parser, "expected tag name: got %s\n", msg);
             return XML_ERR_PARSE;
-        case XML_SUCCESS:
-            break;
         default:
             return result;
     }
     XMLConsumeWhiteSpaceChecked(parser, result);
     while ( 1 ) {
         XMLNodeAttribute attrib = { 
-            .name  = InitXMLString(parser->codec, parser->base.allocator),
-            .value = InitXMLString(parser->codec, parser->base.allocator)
+            .name  = InitXMLString(parser->codec, parser->allocator),
+            .value = InitXMLString(parser->codec, parser->allocator)
         };
-        if ( ( result = _XMLParseName(parser, &attrib.name) ) == XML_ERR_PARSE )
-            break;
-        if ( ( result = _XMLParseEq(parser) ) != XML_SUCCESS )
-            return result;
-        if ( ( result = _XMLParseAttribValue(parser, &attrib.value) ) != XML_SUCCESS )
-            return result;
-        if ( ( result = XMLNodeAppendAttrib(node, attrib, parser->base.allocator) ) != XML_SUCCESS )
-            return result; 
-        if ( ( result = _XMLConsumeWhiteSpace(parser) ) < 0)
-            return result;
-        else if ( result == 0 ) {
-            break;
+        result = XMLParseName(parser, &attrib.name);
+        switch ( result ) {
+            case XML_SUCCESS:
+                break;
+            case XML_ERR_PARSE:
+                goto afterAttribs;
+            default:
+                return result;
         }
+        XMLCheckError(XMLParseEq(parser));
+        XMLCheckError(XMLParseAttribValue(parser, &attrib.value)); 
+        XMLCheckError(XMLNodeAppendAttrib(node, attrib, parser->allocator)); 
+        XMLConsumeWhiteSpaceChecked(parser, result);
+        if ( result == 0 ) 
+            break;
     }
+    afterAttribs:
     XMLPeekCP(parser, parser->cp, result);
     switch ( parser->cp ) {
         case XML_UNICODE_SLASH:
@@ -254,25 +225,40 @@ XMLParseStartTag(XMLParser *base)
                 goto NoEndTag;
             node->isClosed = XML_TRUE;
             parser->node = node->parent;
-            // fallthrough
+            break;
         case XML_UNICODE_GREATER_THAN:
+            XMLAdvanceCP(parser, result);
             break;
         default:
             NoEndTag:
             XMLCharToString(msg, parser->codec, parser->cp);
-            XMLAllocateErrorMessageChecked(parser, "expected end tag '>': got %s\n", msg);
+            XMLAllocateErrorMessageChecked(parser, "expected end of tag specifier '>': got %s\n", msg);
             return XML_ERR_PARSE;
     }
-    
-    (void) msg; 
-    (void) _XMLParseName;
-    (void) _XMLParseCharacterData;
-    (void) _XMLParseEq;
     return XML_SUCCESS;
-    XMLAllocateFail:
-    XMLSetErrorMessage(parser, "failed to allocate memory\n");
-    return XML_ERR_ALLOC;
-    XMLPeekFail:
-    XMLExpectFail:
-    return XML_ERR_ENCODING;
+}
+
+int
+XMLParseEndTag(XMLParser *parser, XMLString *endTag)
+{
+    char msg[8]; 
+    int result;
+    assert(endTag != NULL);
+    if ( ( result = XMLParseName(parser, endTag) ) != XML_SUCCESS ) {
+        switch (result) {
+            case XML_ERR_PARSE:
+                XMLSetErrorMessage(parser, "expected end tag name\n"); 
+                return XML_ERR_PARSE;
+            default:
+                return result;
+        }
+    }
+    XMLConsumeWhiteSpaceChecked(parser, result);
+    XMLExpectCP(parser, parser->cp, result);
+    if ( result == 0 ) {
+        XMLCharToString(msg, parser->codec, parser->cp);
+        XMLAllocateErrorMessageChecked(parser, "expected end of tag specifier '>': got %s\n", msg);
+        return XML_ERR_PARSE;
+    }
+    return XML_SUCCESS;
 }

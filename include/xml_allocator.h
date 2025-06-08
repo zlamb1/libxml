@@ -5,9 +5,9 @@
 
 #define XMLAllocateChecked(VAR, ALLOCATOR, SIZE) \
     do { \
-        (VAR) = XMLAllocate((ALLOCATOR), (SIZE)); \
-        if ( (VAR) == NULL ) \
-            goto XMLAllocateFail; \
+        if ( ( (VAR) = XMLAllocate((ALLOCATOR), (SIZE)) ) == NULL ) { \
+            return XML_ERR_ALLOC; \
+        } \
     } while (0)
 
 typedef struct

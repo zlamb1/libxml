@@ -6,6 +6,7 @@
 #define XML_UNICODE_NEWLINE       0x0A  // \n
 #define XML_UNICODE_CR            0x0D  // \r
 #define XML_UNICODE_SPACE         0x20
+#define XML_UNICODE_EXCLAMATION   0x21  // !
 #define XML_UNICODE_QUOTE         0x22  // "
 #define XML_UNICODE_AMPERSAND     0x26  // & 
 #define XML_UNICODE_APOSTROPHE    0x27  // '

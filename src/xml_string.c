@@ -5,7 +5,7 @@
 XMLString
 InitXMLString(UnicodeCodec codec, XMLAllocator *allocator)
 {
-    XMLString xmlString = {
+    return (XMLString) {
         .len = 0,
         .bytes = 0,
         .cap = 0,
@@ -13,24 +13,26 @@ InitXMLString(UnicodeCodec codec, XMLAllocator *allocator)
         .codec = codec,
         .allocator = allocator
     };
-    return xmlString;
 }
+
+#include <stdio.h>
 
 int
 XMLStringAppend(XMLString *xmlString, unsigned codePoint)
 {
-    size_t cap;
+    size_t cap, maxsize;
     unsigned encoded;
     int sz;
     if ( xmlString == NULL || xmlString->allocator == NULL )
         return XML_ERR_INVALID_ARG;
-    if ( ( sz = xmlString->codec.encodeCodePoint(codePoint, &encoded) ) <= 0 )
+    if ( ( sz = xmlString->codec.encodeCodePoint(codePoint, &encoded) ) < 0 )
         return sz;
     cap = xmlString->cap;
-    if ( xmlString->bytes + sz > cap ) {
+    maxsize = xmlString->bytes + sz + 1;
+    if ( cap < maxsize ) {
         if ( cap == 0 ) 
             xmlString->cap = 1;
-        while ( xmlString->cap <= xmlString->bytes + sz )
+        while ( xmlString->cap < maxsize )
             xmlString->cap *= 2;
     }
     if ( xmlString->cap != cap ) {
@@ -53,7 +55,8 @@ DestroyXMLString(XMLString *xmlString)
 {
     if ( xmlString == NULL || xmlString->allocator == NULL )
         return XML_ERR_INVALID_ARG;
-    if ( xmlString->buf != NULL )
+    if ( xmlString->buf != NULL ) {
         xmlString->allocator->free(xmlString->buf, xmlString->allocator->ctx);
+    }
     return XML_SUCCESS;
 }

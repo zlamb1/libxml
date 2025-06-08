@@ -9,8 +9,9 @@
 
 #define XMLStringAppendChecked(STRING, CHAR) \
     do { \
-        if ( XMLStringAppend((STRING), (CHAR)) != XML_SUCCESS ) \
-            goto XMLAllocateFail; \
+        if ( XMLStringAppend((STRING), (CHAR)) != XML_SUCCESS ) { \
+            return XML_ERR_ALLOC; \
+        } \
     } while (0)
 
 #define XMLCharToString(BUF, CODEC, CHAR) \
