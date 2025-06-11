@@ -5,12 +5,12 @@
             "name": "gcc_clang_common",
             "hidden": true,
             "environment": {
-                "LIB_COMPILE_OPTIONS": "-Wall;-Wextra;-Wpedantic;-Werror;-Wshadow;-Wpointer-arith;-Wstrict-prototypes;-Wmissing-prototypes;-Wno-missing-braces;-Wno-missing-field-initializers;-Wbad-function-cast;-Winline;-Wundef;-Wunreachable-code;-Wredundant-decls;-Wfloat-equal;-Wcast-align;-Wcast-qual;-Wdeclaration-after-statement;-Wmissing-include-dirs;-Wnested-externs;-Wsequence-point;-Wswitch;-Wunused-but-set-parameter;-Wwrite-strings;-Wunused-result;-pedantic-errors"
+                "LIB_COMPILE_OPTIONS": "-Wall;-Wextra;-Werror;-Wpedantic;-Wshadow;-Wpointer-arith;-Wstrict-prototypes;-Wmissing-prototypes;-Wno-missing-braces;-Wno-missing-field-initializers;-Wbad-function-cast;-Winline;-Wundef;-Wunreachable-code;-Wredundant-decls;-Wfloat-equal;-Wcast-align;-Wcast-qual;-Wdeclaration-after-statement;-Wmissing-include-dirs;-Wnested-externs;-Wsequence-point;-Wswitch;-Wunused-but-set-parameter;-Wwrite-strings;-Wunused-result;-pedantic-errors"
             }
         },
         {
-            "name": "debug_ninja_clang",
-            "displayName": "Debug: Ninja Clang",
+            "name": "debug_ninja",
+            "displayName": "Debug: Ninja",
             "generator": "Ninja",
             "binaryDir": "build/debug",
             "inherits": "gcc_clang_common",
@@ -19,8 +19,8 @@
             }
         },
         {
-            "name": "release_ninja_clang",
-            "displayName": "Release: Ninja Clang",
+            "name": "release_ninja",
+            "displayName": "Release: Ninja",
             "generator": "Ninja",
             "binaryDir": "build/release",
             "inherits": "gcc_clang_common",
