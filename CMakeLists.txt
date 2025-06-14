@@ -13,6 +13,7 @@ add_library(${LIB_NAME}
     src/xmlparse.c
     src/xmlparsecmd.c
     src/xmlparser.c
+    src/xmlstring.c
 )
 
 set_target_properties(${LIB_NAME} PROPERTIES C_STANDARD 11)

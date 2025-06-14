@@ -3,28 +3,34 @@
 #include "_libxml.h"
 
 void
-xmlQueueParseCommand(xmlParser *parser, xmlParseCommand command)
+xmlPushParseCommand (xmlParser *parser, xmlParseCommand command)
 {
-    assert(parser->head != ((parser->tail + 1) % LXML_PARSER_COMMAND_QUEUE_SIZE));
-    parser->queue[parser->tail] = command;
-    parser->tail = (parser->tail + 1) % LXML_PARSER_COMMAND_QUEUE_SIZE; 
+  assert (parser->stackTop < LXML_PARSER_COMMAND_STACK_SIZE - 1);
+  parser->commandStack[++parser->stackTop] = command;
 }
 
 void
-xmlExpectCharacter(xmlParser *parser, xmlUTF32 expected)
+xmlExpectCharacter (xmlParser *parser, xmlUTF32 expected)
 {
-    xmlQueueParseCommand(parser, (xmlParseCommand) {
-        .type = LXML_PARSER_STATE_TYPE_CHARACTER,
-        .character = expected
-    });
+  xmlPushParseCommand (
+      parser, (xmlParseCommand){ .type = LXML_PARSE_STATE_TYPE_CHARACTER,
+                                 .character = expected });
+}
+
+void
+xmlConsumeWhiteSpace (xmlParser *parser)
+{
+  xmlPushParseCommand (
+      parser, (xmlParseCommand){ .type = LXML_PARSE_STATE_TYPE_WHITESPACE });
 }
 
 xmlError
-xmlDequeueParseCommand(xmlParser *parser, xmlParseCommand *command)
+xmlPopParseCommand (xmlParser *parser, xmlParseCommand *command)
 {
-    if ( parser->head == parser->tail )
-        return LXML_ERR_LEN;
-    *command = parser->queue[parser->head];
-    parser->head = (parser->head + 1) % LXML_PARSER_COMMAND_QUEUE_SIZE;
-    return LXML_ERR_NONE;
+  if (parser->stackTop == -1)
+    return LXML_ERR_LEN;
+  if (command != NULL)
+    *command = parser->commandStack[parser->stackTop];
+  parser->stackTop--;
+  return LXML_ERR_NONE;
 }

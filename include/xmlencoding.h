@@ -5,26 +5,23 @@
 
 typedef unsigned long xmlUTF32;
 
-typedef struct
-xmlScalarEncode
+typedef struct xmlScalarEncode
 {
-    xmlError error;
-    xmlSize size;
+  xmlError error;
+  xmlSize size;
 } xmlScalarEncode;
 
-typedef struct 
-xmlScalarDecode
+typedef struct xmlScalarDecode
 {
-    xmlError error; 
-    xmlUTF32 scalar;
-    xmlSize size;
+  xmlError error;
+  xmlUTF32 scalar;
+  xmlSize size;
 } xmlScalarDecode;
 
-typedef struct
-xmlEncodingConverter
+typedef struct xmlEncodingConverter
 {
-    xmlScalarEncode (*encode)(xmlUTF32 scalar, xmlUChar *dst, xmlSize len);
-    xmlScalarDecode (*decode)(xmlUChar *src, xmlSize len);
+  xmlScalarEncode (*encode) (xmlUTF32 scalar, xmlUChar *dst, xmlSize len);
+  xmlScalarDecode (*decode) (xmlUChar *src, xmlSize len);
 } xmlEncodingConverter;
 
 extern xmlEncodingConverter utf8Converter;

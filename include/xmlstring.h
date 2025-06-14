@@ -1,38 +1,42 @@
+#include "xmlunicode.h"
 #ifndef XMLSTRING_H
 #define XMLSTRING_H 1
 
 #include "xmlalloc.h"
-#include "xmltype.h"
 #include "xmlencoding.h"
+#include "xmltype.h"
 
-typedef struct
-xmlString
+typedef struct xmlString
 {
-    xmlSize bytes, cap;
-    xmlChar *buf;
-} xmlString; 
+  xmlSize len;
+  xmlSize bytes;
+  xmlSize cap;
+  xmlChar *buf;
+} xmlString;
 
-typedef struct
-xmlStringIterator
+typedef struct xmlStringIterator
 {
-    xmlEncodingConverter *encoding;
-    xmlSize pos;
-    xmlString *string;
+  xmlEncodingConverter *encoding;
+  xmlSize pos;
+  xmlString *string;
 } xmlStringIterator;
 
-xmlError
-xmlStringAppendCharacter(xmlString *string, xmlAllocator *allocator, xmlEncodingConverter *dstConverter, xmlUTF32 character);
+xmlError xmlStringAppend (xmlString *string, xmlAllocator *allocator,
+                          xmlEncodingConverter *encoding, xmlUTF32 character,
+                          xmlBoolean setBytes);
 
-xmlError
-xmlStringAppendString(xmlString *string, xmlAllocator *allocator, xmlEncodingConverter *dstConverter, const xmlChar *str); 
+xmlError xmlStringClear (xmlString *string);
 
-xmlError
-xmlDestroyString(xmlString *string, xmlAllocator *allocator);
+inline static xmlError
+xmlStringTerminate (xmlString *string, xmlAllocator *allocator,
+                    xmlEncodingConverter *encoding)
+{
+  return xmlStringAppend (string, allocator, encoding, LXML_UC_NUL,
+                          LXML_FALSE);
+}
 
-xmlError 
-xmlStringIteratorHasNext(xmlStringIterator *iterator);
+xmlError xmlDestroyString (xmlString *string, xmlAllocator *allocator);
 
-xmlUTF32
-xmlStringIteratorNext(xmlStringIterator *iterator);
+xmlError xmlStringIteratorNext (xmlStringIterator *iterator, xmlUTF32 *out);
 
 #endif
