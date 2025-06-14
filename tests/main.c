@@ -99,7 +99,6 @@ main (void)
 {
   xmlAllocator *allocator;
   xmlParser *parser;
-  xmlParserAttributes attribs = { 0 };
   char *buf;
   size_t len;
 #ifdef _WIN32
@@ -110,8 +109,7 @@ main (void)
       printf ("failed to init allocator\n");
       return -1;
     }
-  attribs.allocator = allocator;
-  if (xmlInitParser (&attribs, &parser) != LXML_ERR_NONE)
+  if (xmlInitParser (NULL, &parser) != LXML_ERR_NONE)
     {
       printf ("failed to init parser\n");
       return -1;
@@ -144,7 +142,7 @@ main (void)
           else
             {
               xmlSize memorySize = 0; // 21015848
-              xmlGetTreeMemorySize (root, &memorySize);
+              xmlNodeGetTreeMemorySize (root, &memorySize);
               printf ("tree memory size : %zu\n", memorySize);
               // printnode (root);
               // printf ("\n");
@@ -162,12 +160,5 @@ main (void)
       printf ("failed to destroy parser\n");
       return -1;
     }
-  {
-    xmlDebugMetrics metrics;
-    xmlDebugAllocatorGetMetrics (allocator, &metrics);
-    printf ("bytes allocated: %zu\n", metrics.bytesAllocated);
-    printf ("bytes freed: %zu\n", metrics.bytesFreed);
-  }
-  xmlDestroyDebugAllocator (allocator);
   return 0;
 }

@@ -1,6 +1,7 @@
 #include <assert.h>
 
 #include "_libxml.h"
+#include "xmlparser.h"
 
 void
 xmlPushParseCommand (xmlParser *parser, xmlParseCommand command)
@@ -21,7 +22,16 @@ void
 xmlConsumeWhiteSpace (xmlParser *parser)
 {
   xmlPushParseCommand (
-      parser, (xmlParseCommand){ .type = LXML_PARSE_STATE_TYPE_WHITESPACE });
+      parser, (xmlParseCommand){ .type = LXML_PARSE_STATE_TYPE_WHITESPACE,
+                                 .required = LXML_FALSE });
+}
+
+void
+xmlExpectWhiteSpace (xmlParser *parser)
+{
+  xmlPushParseCommand (
+      parser, (xmlParseCommand){ .type = LXML_PARSE_STATE_TYPE_WHITESPACE,
+                                 .required = LXML_TRUE });
 }
 
 xmlError

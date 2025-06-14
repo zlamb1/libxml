@@ -38,6 +38,7 @@ typedef struct xmlParseCommand
                        struct xmlParseCommand *state);
   union
   {
+    xmlBoolean required;
     xmlUTF32 character;
     xmlString *string;
   };
@@ -91,6 +92,8 @@ void xmlPushParseCommand (xmlParser *parser, xmlParseCommand command);
 void xmlExpectCharacter (xmlParser *parser, xmlUTF32 character);
 
 void xmlConsumeWhiteSpace (xmlParser *parser);
+
+void xmlExpectWhiteSpace (xmlParser *parser);
 
 xmlError xmlPopParseCommand (xmlParser *parser, xmlParseCommand *command);
 

@@ -10,6 +10,7 @@ add_library(${LIB_NAME}
     src/libxml.c
     src/xmlalloc.c
     src/xmlencoding.c
+    src/xmlnode.c
     src/xmlparse.c
     src/xmlparsecmd.c
     src/xmlparser.c

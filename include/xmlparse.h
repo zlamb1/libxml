@@ -2,6 +2,7 @@
 #define XMLPARSE_H 1
 
 #include "xmlencoding.h"
+#include "xmlparser.h"
 #include "xmltype.h"
 #include "xmlunicode.h"
 
@@ -94,5 +95,15 @@ xmlIsNameCharacter (xmlUTF32 scalar)
              || (scalar >= 0x203F && scalar <= 0x2040);
     }
 }
+
+typedef struct xmlParseCommand xmlParseCommand;
+
+xmlError xmlReadCharacter (xmlParser *parser);
+
+void xmlConsumeCharacter (xmlParser *parser);
+
+xmlError xmlParseTagType (xmlParser *parser);
+
+xmlError xmlEndTag (xmlParser *parser, xmlParseCommand *command);
 
 #endif
