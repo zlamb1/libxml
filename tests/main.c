@@ -1,8 +1,10 @@
 #include "xmlalloc.h"
 #include "xmlparser.h"
 #include "xmlstring.h"
+#include <bits/time.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -116,6 +118,7 @@ main (void)
     }
   for (size_t i = 0; i < sizeof (EXAMPLE_FILES) / sizeof (const char *); i++)
     {
+      struct timespec start, end, delta;
       xmlDocument *document;
       xmlError error = LXML_ERR_NONE;
       printf ("reading %s...\n", EXAMPLE_FILES[i]);
@@ -125,7 +128,12 @@ main (void)
           printf ("failed to read: %s\n", EXAMPLE_FILES[i]);
           continue;
         }
+      clock_gettime (CLOCK_MONOTONIC, &start);
       error = xmlParseDocument (buf, len, parser, &document);
+      clock_gettime (CLOCK_MONOTONIC, &end);
+      delta.tv_nsec = end.tv_nsec - start.tv_nsec;
+      delta.tv_sec = end.tv_sec - start.tv_sec;
+      printf ("%fms\n", delta.tv_sec * 1000.0 + delta.tv_nsec / 1000000.0);
       if (error == LXML_ERR_NONE)
         {
           xmlNode *root;
@@ -135,8 +143,11 @@ main (void)
             }
           else
             {
-              printnode (root);
-              printf ("\n");
+              xmlSize memorySize = 0; // 21015848
+              xmlGetTreeMemorySize (root, &memorySize);
+              printf ("tree memory size : %zu\n", memorySize);
+              // printnode (root);
+              // printf ("\n");
             }
         }
       else

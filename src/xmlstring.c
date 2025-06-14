@@ -1,11 +1,14 @@
-#include "xmlstring.h"
+#include <string.h>
+
+#include "xmlalloc.h"
 #include "xmlencoding.h"
+#include "xmlstring.h"
 #include "xmltype.h"
 
 xmlError
 xmlStringAppend (xmlString *string, xmlAllocator *allocator,
                  xmlEncodingConverter *encoding, xmlUTF32 character,
-                 xmlBoolean setBytes)
+                 xmlBoolean setlen)
 {
   xmlScalarEncode encode;
   xmlSize size, cap;
@@ -18,9 +21,9 @@ xmlStringAppend (xmlString *string, xmlAllocator *allocator,
   switch (encode.error)
     {
     case LXML_ERR_NONE:
-      string->len++;
-      if (setBytes)
-        string->bytes += encode.size;
+      if (setlen)
+        string->len++;
+      string->bytes += encode.size;
       return LXML_ERR_NONE;
     case LXML_ERR_LEN:
       break;
@@ -46,9 +49,34 @@ xmlStringAppend (xmlString *string, xmlAllocator *allocator,
                              string->cap - string->bytes);
   if (encode.error != LXML_ERR_NONE)
     return encode.error;
-  string->len++;
-  if (setBytes == LXML_TRUE)
-    string->bytes += encode.size;
+  if (setlen)
+    string->len++;
+  string->bytes += encode.size;
+  return LXML_ERR_NONE;
+}
+
+xmlError
+xmlStringDuplicate (xmlString *string, xmlAllocator *allocator, xmlString *out)
+{
+  if (string == NULL || allocator == NULL || out == NULL)
+    return LXML_ERR_ARG;
+  if (string == out)
+    return LXML_ERR_NONE;
+  if (string->bytes == 0)
+    {
+      out->len = 0;
+      out->bytes = 0;
+      out->cap = 0;
+      out->buf = NULL;
+      return LXML_ERR_NONE;
+    }
+  out->buf = allocator->malloc (string->bytes, allocator->ctx);
+  if (out->buf == NULL)
+    return LXML_ERR_ALLOC;
+  memcpy (out->buf, string->buf, string->bytes);
+  out->len = string->len;
+  out->bytes = string->bytes;
+  out->cap = string->bytes;
   return LXML_ERR_NONE;
 }
 
@@ -67,7 +95,10 @@ xmlDestroyString (xmlString *string, xmlAllocator *allocator)
   if (string == NULL || allocator == NULL)
     return LXML_ERR_ARG;
   if (string->buf != NULL)
-    allocator->free (string->buf, allocator->ctx);
+    {
+      allocator->free (string->buf, allocator->ctx);
+      string->buf = NULL;
+    }
   return LXML_ERR_NONE;
 }
 

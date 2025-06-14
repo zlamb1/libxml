@@ -23,7 +23,10 @@ typedef struct xmlStringIterator
 
 xmlError xmlStringAppend (xmlString *string, xmlAllocator *allocator,
                           xmlEncodingConverter *encoding, xmlUTF32 character,
-                          xmlBoolean setBytes);
+                          xmlBoolean setlen);
+
+xmlError xmlStringDuplicate (xmlString *string, xmlAllocator *allocator,
+                             xmlString *out);
 
 xmlError xmlStringClear (xmlString *string);
 

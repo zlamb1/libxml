@@ -67,6 +67,11 @@ xmlError xmlGetDocumentStringIterator (xmlDocument *document,
                                        xmlString *string,
                                        xmlStringIterator *iterator);
 
+xmlError xmlGetTreeMemorySize (xmlNode *root, xmlSize *out);
+
+xmlError xmlDestroyNode (xmlNode *root, xmlAllocator *allocator,
+                         xmlBoolean destroyRoot);
+
 xmlError xmlDestroyDocument (xmlDocument *document);
 
 #endif

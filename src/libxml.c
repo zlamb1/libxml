@@ -226,17 +226,20 @@ xmlProcessCommands (xmlParser *parser)
             }
           break;
         case LXML_PARSE_STATE_TYPE_NAME:
+          xmlStringClear (&parser->scratch);
           XML_RETURN_ERROR (xmlReadCharacter (parser));
-          while (xmlIsNameCharacter (parser->character))
+          while (xmlIsNameCharacter (parser->character)) // 40402902
             {
               XML_RETURN_ERROR (xmlStringAppend (
-                  command.string, parser->allocator, parser->dstConverter,
+                  &parser->scratch, parser->allocator, parser->dstConverter,
                   parser->character, LXML_TRUE));
               xmlConsumeCharacter (parser);
               XML_RETURN_ERROR (xmlReadCharacter (parser));
             }
-          xmlStringTerminate (command.string, parser->allocator,
+          xmlStringTerminate (&parser->scratch, parser->allocator,
                               parser->dstConverter);
+          XML_RETURN_ERROR (xmlStringDuplicate (
+              &parser->scratch, parser->allocator, command.string));
           break;
         case LXML_PARSE_STATE_TYPE_TAG_OR_CONTENT:
           XML_RETURN_ERROR (xmlReadCharacter (parser));
@@ -316,6 +319,7 @@ xmlProcessCommands (xmlParser *parser)
         case LXML_PARSE_STATE_TYPE_ATTRIB_VALUE:
           {
             xmlUTF32 endCharacter = parser->character;
+            xmlStringClear (&parser->scratch);
             xmlConsumeCharacter (parser);
             XML_RETURN_ERROR (xmlReadCharacter (parser));
             // TODO: handle entity references + normalization
@@ -334,17 +338,20 @@ xmlProcessCommands (xmlParser *parser)
                     break;
                   }
                 XML_RETURN_ERROR (xmlStringAppend (
-                    command.string, parser->allocator, parser->dstConverter,
+                    &parser->scratch, parser->allocator, parser->dstConverter,
                     parser->character, LXML_TRUE));
                 xmlConsumeCharacter (parser);
                 XML_RETURN_ERROR (xmlReadCharacter (parser));
               }
             xmlConsumeCharacter (parser);
-            xmlStringTerminate (command.string, parser->allocator,
+            xmlStringTerminate (&parser->scratch, parser->allocator,
                                 parser->dstConverter);
+            xmlStringDuplicate (&parser->scratch, parser->allocator,
+                                command.string);
             break;
           }
         case LXML_PARSE_STATE_TYPE_CONTENT:
+          xmlStringClear (&parser->scratch);
           XML_RETURN_ERROR (xmlReadCharacter (parser));
           // TODO: handle ]]>
           while (parser->character != LXML_UC_NUL)
@@ -358,14 +365,16 @@ xmlProcessCommands (xmlParser *parser)
                   break;
                 }
               XML_RETURN_ERROR (xmlStringAppend (
-                  command.string, parser->allocator, parser->dstConverter,
+                  &parser->scratch, parser->allocator, parser->dstConverter,
                   parser->character, LXML_TRUE));
               xmlConsumeCharacter (parser);
               XML_RETURN_ERROR (xmlReadCharacter (parser));
             }
         out:
-          xmlStringTerminate (command.string, parser->allocator,
+          xmlStringTerminate (&parser->scratch, parser->allocator,
                               parser->dstConverter);
+          xmlStringDuplicate (&parser->scratch, parser->allocator,
+                              command.string);
           break;
         case LXML_PARSE_STATE_TYPE_COMMENT:
           {
@@ -419,6 +428,7 @@ xmlParseDocument (xmlChar *src, xmlSize size, xmlParser *parser,
   memset (document, 0, sizeof (xmlDocument));
   document->version = LXML_VERSION_1_0;
   document->allocator = parser->allocator;
+  *out = document;
   parser->parseMode = LXML_PARSE_MODE_DOM;
   parser->pos = 0;
   parser->size = size;
@@ -436,7 +446,6 @@ xmlParseDocument (xmlChar *src, xmlSize size, xmlParser *parser,
       return LXML_ERR_PARSE;
     }
   document->root = parser->root;
-  *out = document;
   return LXML_ERR_NONE;
 fail:
   return error;
@@ -462,6 +471,124 @@ xmlGetDocumentStringIterator (xmlDocument *document, xmlString *string,
 }
 
 xmlError
+xmlGetTreeMemorySize (xmlNode *root, xmlSize *out)
+{
+  long top = -1, cap = 64;
+  xmlNode **stk;
+  xmlSize bytes = 0;
+  if (root == NULL || out == NULL)
+    return LXML_ERR_ARG;
+  stk = malloc (sizeof (xmlNode **) * cap);
+  if (stk == NULL)
+    return LXML_ERR_ALLOC;
+  stk[++top] = root;
+  while (top > -1)
+    {
+      xmlNode *node = stk[top--];
+      switch (node->type)
+        {
+        case LXML_NODE_TYPE_MIXED:
+          bytes += node->cchildren * sizeof (xmlNode);
+          for (xmlSize i = 0; i < node->nchildren; i++)
+            {
+              xmlNode *child = node->children + i;
+              if (top >= cap - 1)
+                {
+                  xmlNode **newstk;
+                  while (top >= cap - 1)
+                    cap *= 2;
+                  newstk = realloc (stk, sizeof (xmlNode **) * cap);
+                  if (newstk == NULL)
+                    {
+                      free (stk);
+                      return LXML_ERR_ALLOC;
+                    }
+                  stk = newstk;
+                }
+              stk[++top] = child;
+            }
+          // fallthrough
+        case LXML_NODE_TYPE_EMPTY:
+          bytes += node->name.cap;
+          bytes += node->cattribs * sizeof (xmlNodeAttribute);
+          for (xmlSize i = 0; i < node->nattribs; i++)
+            {
+              xmlNodeAttribute *attrib = node->attribs + i;
+              bytes += attrib->name.cap;
+              bytes += attrib->value.cap;
+            }
+          break;
+        case LXML_NODE_TYPE_TEXT:
+          bytes += node->text.cap;
+          break;
+        case LXML_NODE_TYPE_COMMENT:
+          bytes += node->comment.cap;
+          break;
+        }
+    }
+  *out = bytes;
+  free (stk);
+  return LXML_ERR_NONE;
+}
+
+xmlError
+xmlDestroyNode (xmlNode *root, xmlAllocator *allocator, xmlBoolean destroyRoot)
+{
+  xmlNode *node = root;
+  if (root == NULL || allocator == NULL)
+    return LXML_ERR_ARG;
+  while (node != NULL)
+    {
+      switch (node->type)
+        {
+        case LXML_NODE_TYPE_MIXED:
+          if (node->nchildren)
+            {
+              node->nchildren--;
+              node = node->children + node->nchildren;
+              break;
+            }
+          if (node->children != NULL)
+            {
+              allocator->free (node->children, allocator->ctx);
+              node->children = NULL;
+            }
+          // fallthrough
+        case LXML_NODE_TYPE_EMPTY:
+          xmlDestroyString (&node->name, allocator);
+          if (node->attribs != NULL)
+            {
+              for (xmlSize i = 0; i < node->nattribs; i++)
+                {
+                  xmlNodeAttribute *attrib = node->attribs + i;
+                  if (attrib->name.buf != NULL)
+                    xmlDestroyString (&attrib->name, allocator);
+                  if (attrib->value.buf != NULL)
+                    xmlDestroyString (&attrib->value, allocator);
+                }
+              allocator->free (node->attribs, allocator->ctx);
+              node->attribs = NULL;
+            }
+          node = node->parent;
+          break;
+        case LXML_NODE_TYPE_TEXT:
+          if (node->text.buf != NULL)
+            xmlDestroyString (&node->text, allocator);
+          node = node->parent;
+          break;
+        case LXML_NODE_TYPE_COMMENT:
+          if (node->comment.buf != NULL)
+            xmlDestroyString (&node->comment, allocator);
+          node = node->parent;
+          break;
+        }
+    }
+  if (destroyRoot == LXML_TRUE)
+    allocator->free (root, allocator->ctx);
+  return LXML_ERR_NONE;
+}
+
+xmlError
 xmlDestroyDocument (xmlDocument *document)
 {
   xmlAllocator *allocator;
@@ -472,51 +599,7 @@ xmlDestroyDocument (xmlDocument *document)
   root = document->root;
   if (root != NULL)
     {
-      xmlNode *node = root;
-      while (node != NULL)
-        {
-          switch (node->type)
-            {
-            case LXML_NODE_TYPE_MIXED:
-              if (node->nchildren)
-                {
-                  node->nchildren--;
-                  node = node->children + node->nchildren;
-                  break;
-                }
-              if (node->children != NULL)
-                allocator->free (node->children, allocator->ctx);
-              // fallthrough
-            case LXML_NODE_TYPE_EMPTY:
-              if (node->name.buf != NULL)
-                allocator->free (node->name.buf, allocator->ctx);
-              if (node->attribs != NULL)
-                {
-                  for (xmlSize i = 0; i < node->nattribs; i++)
-                    {
-                      xmlNodeAttribute *attrib = node->attribs + i;
-                      if (attrib->name.buf != NULL)
-                        allocator->free (attrib->name.buf, allocator->ctx);
-                      if (attrib->value.buf != NULL)
-                        allocator->free (attrib->value.buf, allocator->ctx);
-                    }
-                  allocator->free (node->attribs, allocator->ctx);
-                }
-              node = node->parent;
-              break;
-            case LXML_NODE_TYPE_TEXT:
-              if (node->text.buf != NULL)
-                allocator->free (node->text.buf, allocator->ctx);
-              node = node->parent;
-              break;
-            case LXML_NODE_TYPE_COMMENT:
-              if (node->comment.buf != NULL)
-                allocator->free (node->comment.buf, allocator->ctx);
-              node = node->parent;
-              break;
-            }
-        }
-      allocator->free (root, allocator->ctx);
+      XML_RETURN_ERROR (xmlDestroyNode (root, allocator, LXML_TRUE));
     }
   allocator->free (document, allocator->ctx);
   return LXML_ERR_NONE;
